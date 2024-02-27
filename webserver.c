@@ -30,7 +30,8 @@ void handle_sigint(int sig){
 	printf("The program will exit after at MOST 10 seconds\n");
 }
 
-/* Since most of the header of a http response is the same it all goes here 
+/* Since most of the header of a http response is the same it all goes here since SIZE
+ * is 1000 bytes it should be ok to use sprintf but snprintf just because something might change
  * @param clientID this the file descriptor for the client that the response will be sent to
  * @param http_type this is an enum and can have the value of TEXT for plain text or HTML or CSS
  * @param responseLength this is the length of the response in bytes 
@@ -40,7 +41,7 @@ int http_response_header(int clientID, enum Response_Type http_type, int respons
 	char currentResponse[SIZE];
 	sumOfBytes = 0;
 	previousSum = 0;
-	sprintf(currentResponse, "HTTP/1.1 200 OK\n");
+	snprintf(currentResponse, SIZE, "HTTP/1.1 200 OK\n");
 	sumOfBytes += send(clientID, currentResponse, strlen(currentResponse), 0);
 	if(sumOfBytes < previousSum){
 		return -1;
@@ -54,18 +55,20 @@ int http_response_header(int clientID, enum Response_Type http_type, int respons
 	previousSum = sumOfBytes;
 	switch (http_type) {
 		case TEXT:
-			sprintf(currentResponse, "Content-Type: text/plain; charset=utf-8\n");
+			snprintf(currentResponse, SIZE, "Content-Type: text/plain; charset=utf-8\n");
 			break;
 		case HTML:
-			sprintf(currentResponse, "Content-Type: text/html; charset=utf-8\n");
+			snprintf(currentResponse, SIZE, "Content-Type: text/html; charset=utf-8\n");
 			break;
 		case CSS:
-			sprintf(currentResponse, "Content-Type: text/css; charset=utf-8\n");
+			snprintf(currentResponse, SIZE, "Content-Type: text/css; charset=utf-8\n");
 			break;
 		case PNG:
-			sprintf(currentResponse, "Content-Type: image/png\n"); 
+			snprintf(currentResponse, SIZE, "Content-Type: image/png\n"); 
+			break;
 		case ICO:
-			sprintf(currentResponse, "Content-Type: image/vnd.microsoft.icon\n");
+			snprintf(currentResponse, SIZE, "Content-Type: image/vnd.microsoft.icon\n");
+			break;
 	}
 	sumOfBytes += send(clientID, currentResponse, strlen(currentResponse), 0);
 	if(sumOfBytes < previousSum){
@@ -164,6 +167,7 @@ void *handle_client(void *client_void_id){
 		/* recv returns message size so if recv return 0 or -1 there is no message */
 		if(messageAvalible != -1 && messageAvalible != 0){
 			recv(clientID, clientRequest, SIZE, 0);
+			startTime = time(NULL);
 		}
 		else{
 			continue;
@@ -232,6 +236,7 @@ void *handle_client(void *client_void_id){
 		return NULL;
 	}
 	else{
+		printf("Shutdown the client successfully\n");
 		return NULL;
 	}
 }
@@ -257,13 +262,6 @@ int main(int argc, char **argv){
 		printf("Unable to create socket exiting now\n");
 		exit(-1);
 	}
-	/*
-	if(fcntl(socketID, F_SETFL, fcntl(socketID, F_GETFL, 0) | O_NONBLOCK) == -1){
-		printf("Unable to make socket nonblocking\n");
-		shutdown(socketID, 2);
-		exit(-1);
-	}
-	*/
 	/* This defines the socket address using netinet/in.h sockaddr_in structure
 	 * use man netinet_in.h to find out more */
 	my_addr.sin_family = AF_INET;
@@ -295,6 +293,7 @@ int main(int argc, char **argv){
 			if(clientID != -1) {
 				printf("Accepted the client on the socket\n");
 				pthread_create(&thread, NULL, handle_client, (void *)&clientID);
+				printf("created thread %lu\n", thread);
 				pthread_detach(thread);
 			}
 		}
